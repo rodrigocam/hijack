@@ -1,0 +1,1 @@
+clients = [ {name = "client1", side = "Left"} ]

@@ -1,69 +1,39 @@
-use local_ip_address::local_ip;
-
 use clap::Parser;
-use std::io::{Read, Write};
-use std::net::TcpListener;
-use std::net::TcpStream;
-use std::str::from_utf8;
+use std::error;
+use std::fs::File;
+use std::io::Read;
+use std::net::IpAddr;
+use std::str::FromStr;
 
 pub mod cli;
-pub mod client;
-use crate::cli::Cli;
+pub mod core;
+pub mod observer;
 
-fn main() -> std::io::Result<()> {
+use crate::cli::{Cli, ServerConfig};
+use crate::core::{Client, Server};
+
+fn main() -> Result<(), Box<dyn error::Error>> {
     let args = Cli::parse();
 
-    match args.server_addr {
-        Some(ip) => {
-            // we are running a client
-            let mut stream = TcpStream::connect(format!("{}:4242", ip))?;
-            let msg = b"name=test";
-            stream.write(msg)?;
+    // if it has a config it is certain a hijack server
+    match args.config {
+        Some(path) => {
+            let mut config_file = File::open(path)?;
+            let mut config_str = String::new();
+            config_file.read_to_string(&mut config_str)?;
+            let config: ServerConfig = toml::from_str(&config_str)?;
 
-            let mut data = [0 as u8; 50]; // using 50 byte buffer
-            loop {
-                match stream.read(&mut data) {
-                    Ok(size) => {
-                        if size > 0 {
-                            println!("received msg from server");
-                        }
-                    }
-                    Err(e) => println!("error listening to server"),
-                }
-            }
+            let server = Server::from_config(config);
+            server.run();
         }
+        // if a config is not present it is a client
         None => {
-            let local_ip = local_ip().unwrap();
-
-            let client = args.client.unwrap();
-
-            println!("Runnig hijack server on: {:?}", local_ip);
-            println!(
-                "Client: {} configured at {:?} position.",
-                client.name, client.side
+            let client = Client::new(
+                args.name.unwrap(),
+                IpAddr::from_str(&args.server_addr.unwrap())?,
             );
-            {
-                let listener = TcpListener::bind("0.0.0.0:4242")?;
-
-                for stream in listener.incoming() {
-                    match stream {
-                        Ok(mut tcp_stream) => {
-                            let mut data = [0 as u8; 50]; // using 50 byte buffer
-                            tcp_stream.read(&mut data)?;
-                            let client_name =
-                                from_utf8(&data).unwrap().split('=').collect::<Vec<&str>>()[1];
-                            println!(
-                                "Client `{}` connected with addr `{}`",
-                                client_name,
-                                tcp_stream.peer_addr()?
-                            );
-                        }
-                        Err(e) => panic!(),
-                    }
-                }
-            }
+            client.run();
         }
     }
-
     Ok(())
 }
