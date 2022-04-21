@@ -8,9 +8,12 @@ use std::str::FromStr;
 pub mod cli;
 pub mod core;
 pub mod observer;
+pub mod register;
+pub mod server;
 
 use crate::cli::{Cli, ServerConfig};
-use crate::core::{Client, Server};
+use crate::core::Client;
+use crate::server::Server;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let args = Cli::parse();

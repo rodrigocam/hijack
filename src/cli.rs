@@ -6,13 +6,13 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
-    clients: Vec<ClientConfig>,
+    pub clients: Vec<ClientConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Args)]
 pub struct ClientConfig {
-    name: String,
-    side: ClientSide,
+    pub name: String,
+    pub side: ClientSide,
 }
 
 #[derive(Debug, Clone, Deserialize)]
