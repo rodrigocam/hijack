@@ -4,7 +4,7 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-pub type ClientRegistry = HashMap<String, TcpStream>;
+pub type ClientRegistry = HashMap<String, String>;
 
 pub fn run_register_thread(ip: IpAddr, registry: Arc<Mutex<ClientRegistry>>) {
     thread::spawn(move || {
@@ -14,6 +14,7 @@ pub fn run_register_thread(ip: IpAddr, registry: Arc<Mutex<ClientRegistry>>) {
             let mut buffer = [0 as u8; 250];
             tcp_stream.read(&mut buffer).unwrap();
             let decoded_msg = std::str::from_utf8(&buffer).unwrap();
+            let decoded_msg = decoded_msg.trim_matches(char::from(0));
             let client_info: Vec<&str> = decoded_msg.split(',').collect();
 
             // handle registering
@@ -24,10 +25,7 @@ pub fn run_register_thread(ip: IpAddr, registry: Arc<Mutex<ClientRegistry>>) {
                     "Registering client `{}` with addr `{}`",
                     client_info[0], client_info[1]
                 );
-                r.insert(
-                    client_info[0].to_string(),
-                    TcpStream::connect(client_info[1]).unwrap(),
-                );
+                r.insert(client_info[0].to_string(), client_info[1].to_string());
             }
         }
     });

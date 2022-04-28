@@ -4,6 +4,8 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use core_graphics::geometry::CGPoint;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     pub clients: Vec<ClientConfig>,
@@ -15,12 +17,27 @@ pub struct ClientConfig {
     pub side: ClientSide,
 }
 
+impl ClientConfig {
+    pub fn is_active(&self, mouse_pos: CGPoint) -> bool {
+        self.side.start() == mouse_pos.x
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub enum ClientSide {
     Top,
     Bottom,
     Left,
     Right,
+}
+
+impl ClientSide {
+    pub fn start(&self) -> f64 {
+        match self {
+            ClientSide::Left => 0.0,
+            _ => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

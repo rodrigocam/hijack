@@ -38,72 +38,19 @@ impl Server {
         }
     }
 
-    // pub fn is_client_in_config(&self, client_id: &String) -> bool {
-    //     self.config
-    //         .clients
-    //         .iter()
-    //         .filter(|cg| cg.name == *client_id)
-    //         .count()
-    //         > 0
-    // }
-
-    // pub fn is_client_registered(&self, client_id: &String) -> bool {
-    //     self.registered_clients.contains_key(client_id)
-    // }
-
-    // pub fn try_register_client(&mut self, client_id: &String, client_addr: &String) -> bool {
-    //     dbg!("Trying to register client: `{}`", client_id);
-    //     if self.is_client_in_config(client_id) && !self.is_client_registered(client_id) {
-    //         self.registered_clients
-    //             .insert(client_id.clone(), TcpStream::connect(client_addr).unwrap());
-    //         return true;
-    //     }
-    //     false
-    // }
-
-    // pub fn handle_client_register(&mut self) {
-    //     for client_info in &self.register_channel {}
-    // }
-
-    // /// Run the thread responsible for listening to clients registering
-    // pub fn run_client_register_thread(&mut self) {
-    //     let gate_addr = self.addr;
-    //     // let (tx, rx) = mpsc::channel();
-    //     // self.register_channel = Some(rx);
-    //     let data = Arc::new(Mutex::new(&self));
-
-    //     thread::spawn(move || {
-    //         let listener = TcpListener::bind(format!("{}:4242", gate_addr)).unwrap();
-    //         for stream in listener.incoming() {
-    //             match stream {
-    //                 Ok(mut tcp_stream) => {
-    //                     let mut buffer = [0 as u8; 250];
-    //                     tcp_stream.read(&mut buffer).unwrap();
-    //                     let decoded_msg =
-    //                         String::from_utf8(buffer.to_vec()).expect("Failed to decode message");
-    //                     let client_info = decoded_msg
-    //                         .split(',')
-    //                         .map(|s| s.to_string())
-    //                         .collect::<Vec<String>>();
-    //                     data.lock();
-    //                     // tx.send(client_info).unwrap();
-    //                 }
-    //                 Err(e) => panic!("Error in tcp stream"),
-    //             }
-    //         }
-    //     });
-    // }
-
     pub fn run(&self) {
         println!("Runnig hijack server on: {:?}", self.addr);
         // improve this log
         println!("Server configuration: {:?}", self.config);
 
         let (mouse_tx, mouse_rx) = mpsc::channel();
+        let (comm_tx, comm_rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel();
+
+        run_register_thread(self.addr, Arc::clone(&self.client_registry));
 
         // mouse monitor thread
         thread::spawn(move || {
-            dbg!("mouse thread spawned");
+            println!("mouse thread spawned");
             let cur_run_loop = CFRunLoop::get_current();
             match CGEventTap::new(
                 CGEventTapLocation::HID,
@@ -125,20 +72,39 @@ impl Server {
             }
         });
 
-        run_register_thread(self.addr, Arc::clone(&self.client_registry));
+        let client_registry = Arc::clone(&self.client_registry);
 
-        let mut mouse_owner = "server";
+        // communication thread
+        thread::spawn(move || {
+            for activated_client_name in comm_rx {
+                println!("moving to another screen");
+                let client_name = activated_client_name.as_str();
+                let r = client_registry.lock().unwrap();
+                let client_addr = r.get(client_name).unwrap();
+                let mut client_stream = TcpStream::connect(client_addr).unwrap();
+                let wr = client_stream.write(format!("mouse entered").as_bytes());
+                println!("{:?}", wr);
+                // .unwrap();
+            }
+        });
+
+        // let mut mouse_owner = "server";
         for mouse_pos in mouse_rx {
             // println!("mouse_pos: {}, {}", mouse_location.x, mouse_location.y);
-            if mouse_owner == "server" && mouse_pos.x == 0.0 {
-                mouse_owner = "client";
-                println!("the mouse is in {}", mouse_owner);
-                CGDisplay::warp_mouse_cursor_position(CGPoint::new(2558.0, mouse_pos.y)).unwrap();
-            } else if mouse_owner == "client" && mouse_pos.x > 2559.0 {
-                mouse_owner = "server";
-                println!("the mouse is in {}", mouse_owner);
-                CGDisplay::warp_mouse_cursor_position(CGPoint::new(1.0, mouse_pos.y)).unwrap();
+            for client in &self.config.clients {
+                if client.is_active(mouse_pos) {
+                    comm_tx.send(client.name.clone()).unwrap();
+                }
             }
+            // if mouse_owner == "server" && mouse_pos.x == 0.0 {
+            //     mouse_owner = "client";
+            //     println!("the mouse is in {}", mouse_owner);
+            //     CGDisplay::warp_mouse_cursor_position(CGPoint::new(2558.0, mouse_pos.y)).unwrap();
+            // } else if mouse_owner == "client" && mouse_pos.x > 2559.0 {
+            //     mouse_owner = "server";
+            //     println!("the mouse is in {}", mouse_owner);
+            //     CGDisplay::warp_mouse_cursor_position(CGPoint::new(1.0, mouse_pos.y)).unwrap();
+            // }
         }
     }
 

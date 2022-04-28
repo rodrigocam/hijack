@@ -22,7 +22,15 @@ impl Client {
         stream
             .write(format!("{},{}", self.name, "0.0.0.0:4243").as_bytes())
             .expect("Error while talking to the server");
-        loop {}
+
+        for inc_stream in listener.incoming() {
+            let mut tcp_stream = inc_stream.unwrap();
+            let mut buffer = [0 as u8; 250];
+            tcp_stream.read(&mut buffer).unwrap();
+            let decoded_msg = std::str::from_utf8(&buffer).unwrap();
+            let decoded_msg = decoded_msg.trim_matches(char::from(0));
+            println!("{}", decoded_msg);
+        }
         // let mut data = [0 as u8; 50]; // using 50 byte buffer
         // loop {
         //     match stream.read(&mut data) {
