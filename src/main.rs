@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate lazy_static;
 use local_ip_address::local_ip;
 
 use clap::Parser;
@@ -8,9 +10,16 @@ use std::str::from_utf8;
 
 pub mod cli;
 pub mod client;
+pub mod windows;
+pub mod teste;
+use teste::*;
+use windows::{set_mouse_hook, set_raw_input};
 use crate::cli::Cli;
 
+
 fn main() -> std::io::Result<()> {
+    // set_mouse_hook();
+    _main();
     let args = Cli::parse();
 
     match args.server_addr {
