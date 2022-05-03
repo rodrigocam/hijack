@@ -33,3 +33,15 @@ When the server starts, it starts a thread to monitor the mouse position. This t
 updates a Mouse struct with the new position, and checks if the mouse has reached a side
 that has a client.
 
+
+### POC 2
+
+Start server and a client on different machines. Config the client to be at the left of
+the server. Move the server mouse to the (max left, same y) of the screen makes the cursor dissapear
+and consequently shows the mouse cursor of the client in (min right, same y). Subsequential
+interactions with the server mouse will move the client mouse until the client mouse position
+has reached (max_right, same y) which will unhide the server mouse cursor.
+
+### Proposed solution
+
+When the server starts, it starts a TCP thread **listen** thread

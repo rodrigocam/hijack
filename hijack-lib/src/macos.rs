@@ -6,7 +6,7 @@ use core_graphics::{
 use std::sync::mpsc;
 use std::thread;
 
-pub fn spawn_mouse_observer_thread(mouse_tx: mpsc::Sender<CGPoint>) {
+pub fn spawn_mouse_observer_thread(mouse_tx: mpsc::Sender<()>) {
     // mouse monitor thread
     thread::spawn(move || {
         println!("mouse thread spawned");
@@ -17,7 +17,8 @@ pub fn spawn_mouse_observer_thread(mouse_tx: mpsc::Sender<CGPoint>) {
             CGEventTapOptions::Default,
             vec![CGEventType::MouseMoved /*CGEventType::LeftMouseDown*/],
             |_a, _b, event| {
-                mouse_tx.send(event.location()).unwrap();
+                // mouse_tx.send(event.location()).unwrap();
+                println!("{:?}", event.location());
                 None
             },
         ) {

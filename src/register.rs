@@ -6,7 +6,7 @@ use std::thread;
 
 pub type ClientRegistry = HashMap<String, String>;
 
-pub fn run_register_thread(ip: IpAddr, registry: Arc<Mutex<ClientRegistry>>) {
+pub fn spawn_register_thread(ip: IpAddr, registry: Arc<Mutex<ClientRegistry>>) {
     thread::spawn(move || {
         let listener = TcpListener::bind(format!("{}:4242", ip)).unwrap();
         for stream in listener.incoming() {

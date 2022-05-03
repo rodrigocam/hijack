@@ -6,10 +6,10 @@ use std::{
     thread,
 };
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 use crate::windows;
 
-#[cfg(macos)]
+#[cfg(target_os = "macos")]
 use crate::macos;
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ impl Server {
     fn spawn_client_connection_thread(&self) {
         println!("spawning client connection thread");
         let client_channels = Arc::clone(&self.client_channels);
-        thread::spawn(move ||{
+        thread::spawn(move || {
             let listener = TcpListener::bind("0.0.0.0:4242").unwrap();
             for stream in listener.incoming() {
                 let client_channels = Arc::clone(&client_channels);
@@ -40,7 +40,6 @@ impl Server {
                         println!("New connection: {}", stream.peer_addr().unwrap());
                         thread::spawn(move || {
                             // connection succeeded
-                            // let cc = client_channels.lock().unwrap();
                             Self::handle_new_connection(stream, client_channels);
                         });
                     }
@@ -87,7 +86,7 @@ impl Server {
 
         let (mouse_tx, mouse_rx): (mpsc::Sender<()>, mpsc::Receiver<()>) = mpsc::channel();
 
-        #[cfg(macos)]
+        #[cfg(target_os = "macos")]
         macos::spawn_mouse_observer_thread(mouse_tx);
 
         #[cfg(windows)]

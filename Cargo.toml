@@ -13,7 +13,3 @@ local-ip-address = "0.4.4"
 # device_query = "1.0.0"
 # enigo = "0.0.14"
 clap = { version = "3.1.6", features = ["derive"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-core-graphics = { path = "core-foundation-rs/core-graphics", version = "0.22.3" }
-core-foundation = { path = "core-foundation-rs/core-foundation", version = "0.9.3" }

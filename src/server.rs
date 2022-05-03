@@ -20,6 +20,7 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
+use crate::macos;
 use crate::register::*;
 
 pub struct Server {
@@ -46,31 +47,10 @@ impl Server {
         let (mouse_tx, mouse_rx) = mpsc::channel();
         let (comm_tx, comm_rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel();
 
-        run_register_thread(self.addr, Arc::clone(&self.client_registry));
+        spawn_register_thread(self.addr, Arc::clone(&self.client_registry));
 
-        // mouse monitor thread
-        thread::spawn(move || {
-            println!("mouse thread spawned");
-            let cur_run_loop = CFRunLoop::get_current();
-            match CGEventTap::new(
-                CGEventTapLocation::HID,
-                CGEventTapPlacement::HeadInsertEventTap,
-                CGEventTapOptions::Default,
-                vec![CGEventType::MouseMoved /*CGEventType::LeftMouseDown*/],
-                |_a, _b, event| {
-                    mouse_tx.send(event.location()).unwrap();
-                    None
-                },
-            ) {
-                Ok(tap) => unsafe {
-                    let loop_source = tap.mach_port.create_runloop_source(0).unwrap();
-                    cur_run_loop.add_source(&loop_source, kCFRunLoopCommonModes);
-                    tap.enable();
-                    CFRunLoop::run_current();
-                },
-                Err(_) => panic!("event tap panicked"),
-            }
-        });
+        #[cfg(target_os = "macos")]
+        macos::spawn_mouse_thread(mouse_tx);
 
         let client_registry = Arc::clone(&self.client_registry);
 
