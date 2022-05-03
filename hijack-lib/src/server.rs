@@ -6,6 +6,12 @@ use std::{
     thread,
 };
 
+#[cfg(windows)]
+use crate::windows;
+
+#[cfg(macos)]
+use crate::macos;
+
 #[derive(Debug)]
 pub struct ThreadMessage;
 
@@ -23,22 +29,27 @@ impl Server {
     }
 
     fn spawn_client_connection_thread(&self) {
-        let listener = TcpListener::bind("0.0.0.0:4242").unwrap();
-        for stream in listener.incoming() {
-            match stream {
-                Ok(stream) => {
-                    println!("New connection: {}", stream.peer_addr().unwrap());
-                    let client_channels = Arc::clone(&self.client_channels);
-                    thread::spawn(move || {
-                        // connection succeeded
-                        Self::handle_new_connection(stream, client_channels);
-                    });
-                }
-                Err(e) => {
-                    println!("Error: {}", e);
+        println!("spawning client connection thread");
+        let client_channels = Arc::clone(&self.client_channels);
+        thread::spawn(move ||{
+            let listener = TcpListener::bind("0.0.0.0:4242").unwrap();
+            for stream in listener.incoming() {
+                let client_channels = Arc::clone(&client_channels);
+                match stream {
+                    Ok(stream) => {
+                        println!("New connection: {}", stream.peer_addr().unwrap());
+                        thread::spawn(move || {
+                            // connection succeeded
+                            // let cc = client_channels.lock().unwrap();
+                            Self::handle_new_connection(stream, client_channels);
+                        });
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                    }
                 }
             }
-        }
+        });
     }
 
     fn handle_new_connection(mut stream: TcpStream, client_channels: Arc<Mutex<ClientChannels>>) {
@@ -69,19 +80,19 @@ impl Server {
                 stream.shutdown(Shutdown::Both).unwrap();
             }
         }
-        {}
     }
 
     pub fn run(&self) {
         self.spawn_client_connection_thread();
 
-        let (mouse_tx, mouse_rx) = mpsc::channel();
+        let (mouse_tx, mouse_rx): (mpsc::Sender<()>, mpsc::Receiver<()>) = mpsc::channel();
 
-        #[cfg(target_os = "macos")]
-        use crate::macos;
+        #[cfg(macos)]
         macos::spawn_mouse_observer_thread(mouse_tx);
 
-        #[cfg(target_os = "windows")]
+        #[cfg(windows)]
         windows::spawn_mouse_observer_thread();
+
+        loop {}
     }
 }

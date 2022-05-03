@@ -4,6 +4,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+#[cfg(target_os = "macos")]
 use core_graphics::geometry::CGPoint;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -18,6 +19,8 @@ pub struct ClientConfig {
 }
 
 impl ClientConfig {
+
+    #[cfg(target_os = "macos")]
     pub fn is_active(&self, mouse_pos: CGPoint) -> bool {
         self.side.start() == mouse_pos.x
     }
